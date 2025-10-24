@@ -14,7 +14,7 @@ export const createProduct = async (data: Partial<IProduct>) => {
 };
 
 export const getProducts = async () => {
-  return await Product.find({ isDeleted: false })
+  return await Product.find()
     .select("name category price inventoryCount createdAt updatedAt isDeleted")
     .sort({ createdAt: -1 })
     .populate("category", "name");
@@ -35,13 +35,13 @@ export const getPaginatedProducts = async (page: number, limit: number) => {
 
   const skip = (page - 1) * limit;
   const [products, total] = await Promise.all([
-    Product.find({ isDeleted: false })
+    Product.find()
       .select("name category price inventoryCount createdAt updatedAt isDeleted")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate("category", "name"),
-    Product.countDocuments({ isDeleted: false }),
+    Product.countDocuments(),
   ]);
 
   const result = { products, total };

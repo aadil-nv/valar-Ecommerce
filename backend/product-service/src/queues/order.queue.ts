@@ -5,6 +5,7 @@ let channel: amqp.Channel;
 const QUEUE_NAME = config.ORDER_QUEUE_NAME as string;
 
 export interface OrderEventData {
+  _id:string
   orderId: string;
   customerId: string;
   total: number;

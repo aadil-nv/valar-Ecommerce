@@ -4,6 +4,7 @@ import { broadcastAnalyticsUpdate } from "../websockets/ws.server";
 import { config } from "../config/env.config";
 
 export interface OrderEventData {
+  _id:string
   orderId: string;
   customerId: string;
   total: number;

@@ -10,7 +10,7 @@ export const errorHandler = (
   req: Request,
   res: Response,
 ) => {
-  console.error(err);
+  console.error("Error from error handleer",err);
 
   const statusCode = err.statusCode || 500;
   const message = err.message || "Internal Server Error";

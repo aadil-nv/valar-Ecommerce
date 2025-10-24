@@ -3,6 +3,7 @@ import { config } from "../config/env.config";
 
 // Define a generic type for your order event data
 export interface OrderEventData {
+    _id:string
   orderId: string;
   customerId: string;
   total: number;

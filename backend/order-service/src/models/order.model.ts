@@ -7,11 +7,12 @@ export interface IOrderItem {
 }
 
 export interface IOrder extends Document<Types.ObjectId> {
-  _id: Types.ObjectId; // explicitly type _id
+  _id: Types.ObjectId; // default MongoDB ID
+  orderId: string;     // new explicit orderId
   customerId: string;
   total: number;
   items: IOrderItem[];
-  status: string;
+  status: "pending" | "shipped" | "delivered" | "cancelled";
   createdAt: Date;
 }
 
@@ -22,6 +23,7 @@ const OrderItemSchema = new Schema<IOrderItem>({
 });
 
 const OrderSchema = new Schema<IOrder>({
+  orderId: { type: String, required: true, unique: true }, // new field
   customerId: { type: String, required: true },
   total: { type: Number, required: true },
   items: { type: [OrderItemSchema], required: true },

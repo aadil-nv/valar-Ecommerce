@@ -4,6 +4,7 @@ import { publishProductEvent } from "./product.queue";
 
 
 export interface OrderEventData {
+  _id:string
   orderId: string;
   customerId: string;
   total: number;
