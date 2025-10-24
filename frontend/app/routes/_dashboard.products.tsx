@@ -39,7 +39,7 @@ export default function Products() {
   const [alert, setAlert] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const itemsPerPage = 5;
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
 
   // Fetch products and categories
   useEffect(() => {
@@ -82,13 +82,12 @@ export default function Products() {
     });
   };
 
-  // Handle soft delete
   const handleSoftDelete = (productId: string) => {
     setAlert({
       message: "Are you sure you want to delete this product?",
       onConfirm: async () => {
         try {
-          await axios.delete(`${API_BASE_URL}/products/${productId}`);
+          await axios.patch(`${API_BASE_URL}/products/${productId}`);
           setProducts(products.filter((product) => product._id !== productId));
           setAlert(null);
         } catch (err) {

@@ -38,6 +38,8 @@ export const getProductsController = async (req: Request, res: Response, next: N
 export const updateProductController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { productId } = req.params;
+    console.log("prce chage is ===>",productId ,req.body);
+    
     const product = await ProductService.updateProduct(productId, req.body);
 
     if (!product) return res.status(404).json({ error: "Product not found" });
