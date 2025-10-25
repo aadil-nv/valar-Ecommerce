@@ -15,3 +15,16 @@ export const getProductCounts = async () => {
   const { data } = await axios.get(url);
   return data;
 };
+
+export const decreaseProductStock = async (productId: string, quantity: number) => {
+  if (!productId) {
+    throw new Error("Product ID is required");
+  }
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    throw new Error("Quantity must be a positive integer");
+  }
+
+  const url = `${config.PRODUCT_SERVICE_URL}/api/products/${productId}/decrease-stock`;
+  const { data } = await axios.patch(url, { quantity });
+  return data;
+};

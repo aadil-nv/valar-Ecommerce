@@ -148,3 +148,45 @@ export const getProductCountsController = async (req: Request, res: Response, ne
     next(err);
   }
 };
+
+export const decreaseProductStockController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { productId } = req.params;
+    const { quantity } = req.body;
+
+    // Validate quantity
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      return res.status(400).json({ error: "Quantity must be a positive integer" });
+    }
+
+    // Decrease stock using ProductService
+    const product = await ProductService.decreaseStock(productId, quantity);
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const populatedProduct = await product.populate<{ category: { name: string } }>("category");
+
+    // Publish inventory updated event
+    const eventData: ProductEventData = {
+      productId: (populatedProduct._id as Types.ObjectId).toString(),
+      name: populatedProduct.name,
+      price: populatedProduct.price,
+      inventory: populatedProduct.inventoryCount,
+      categoryName: populatedProduct.category?.name,
+      eventType: "inventory_updated",
+    };
+
+    await publishProductEvent("inventory_updated", eventData);
+
+    res.json(populatedProduct);
+  } catch (err) {
+    await publishProductEvent("inventory_update_failed", {
+      productId: req.params.productId,
+      eventType: "inventory_update_failed",
+      categoryName: "",
+    });
+    next(err);
+  }
+};

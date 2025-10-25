@@ -1,3 +1,4 @@
+// DashboardHome.tsx
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { Bar, Line, Pie } from "react-chartjs-2";
@@ -6,8 +7,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend);
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
-
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8081";
 
 interface OverallMetrics {
   totalRevenue: number;
@@ -42,6 +43,16 @@ interface LowProducts {
   unsoldProducts: { _id: string; name: string }[];
 }
 
+interface WebSocketMessage {
+  event: string;
+  data:
+    | OverallMetrics
+    | OverviewData
+    | MonthlyData[]
+    | TopProduct[]
+    | LowProducts;
+}
+
 export default function DashboardHome() {
   const [overall, setOverall] = useState<OverallMetrics | null>(null);
   const [overview, setOverview] = useState<OverviewData | null>(null);
@@ -52,6 +63,7 @@ export default function DashboardHome() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Initial data fetch
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -77,8 +89,79 @@ export default function DashboardHome() {
     };
 
     fetchData();
+
+    // WebSocket connection with reconnection logic
+    let ws: WebSocket | null = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    const reconnectInterval = 5000; // 5 seconds
+
+    const connectWebSocket = () => {
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        console.log("Connected to WebSocket server");
+        setError(null); // Clear any previous WebSocket errors
+        reconnectAttempts = 0; // Reset reconnect attempts
+      };
+
+      ws.onmessage = (event: MessageEvent) => {
+        console.log("event from websocket is ",event);
+        
+        try {
+          const message: WebSocketMessage = JSON.parse(event.data);
+          switch (message.event) {
+            case "overallMetricsUpdate":
+              setOverall(message.data as OverallMetrics);
+              break;
+            case "salesOverviewUpdate":
+              setOverview(message.data as OverviewData);
+              break;
+            case "monthlySalesUpdate":
+              setMonthly(message.data as MonthlyData[]);
+              break;
+            case "topProductsUpdate":
+              setTopProducts(message.data as TopProduct[]);
+              break;
+            case "lowProductsUpdate":
+              setLowProducts(message.data as LowProducts);
+              break;
+            default:
+              console.warn("Unknown WebSocket event:", message.event);
+          }
+        } catch (err) {
+          console.error("Failed to parse WebSocket message:", err);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setError(`WebSocket connection failed: ${WS_URL}`);
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket connection closed");
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          console.log(`Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})...`);
+          setTimeout(connectWebSocket, reconnectInterval);
+        } else {
+          setError("Max WebSocket reconnection attempts reached");
+        }
+      };
+    };
+
+    connectWebSocket();
+
+    // Cleanup WebSocket on component unmount
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
   }, []);
 
+  // ... (rest of the component remains unchanged)
   // Overview Bar Chart Data
   const overviewChartData = {
     labels: ["Last 24 Hours", "Last 7 Days", "Last 30 Days"],
@@ -145,7 +228,7 @@ export default function DashboardHome() {
     datasets: [
       {
         label: "Unsold Products",
-        data: lowProducts?.unsoldProducts.map(() => 1) || [], // Equal weight for each unsold product
+        data: lowProducts?.unsoldProducts.map(() => 1) || [],
         backgroundColor: [
           "rgba(255, 99, 132, 0.5)",
           "rgba(54, 162, 235, 0.5)",

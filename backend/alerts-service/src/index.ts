@@ -27,7 +27,7 @@ const startServer = async () => {
 
     await connectQueue();
 
-    startWebSocketServer(server);
+    startWebSocketServer();
 
     server.listen(config.PORT, () => {
       console.log(`Alerts Service running on port ${config.PORT}`.bgGreen.bold);

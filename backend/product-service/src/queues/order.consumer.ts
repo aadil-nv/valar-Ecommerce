@@ -1,10 +1,9 @@
-import {  consumeOrderEvents } from "../queues/order.queue";
-import * as ProductService from "../services/product.service";
+import { consumeOrderEvents } from "../queues/order.queue";
+// import * as ProductService from "../services/product.service";
 import { publishProductEvent } from "./product.queue";
 
-
 export interface OrderEventData {
-  _id:string
+  _id: string;
   orderId: string;
   customerId: string;
   total: number;
@@ -23,19 +22,26 @@ export interface OrderEventMessage {
 }
 
 export const handleOrderCreated = async (msg: OrderEventMessage) => {
-  const { data } = msg;
+//   console.log("msg is ===>", msg);
+
+  const { event } = msg;
+
+  // Only process if the event is 'order_created'
+  if (event !== "order_created") {
+    console.log(`Skipping event: ${event}. Only 'order_created' events are processed.`);
+    return;
+  }
 
   try {
-    for (const item of data.items) {
-      await ProductService.decreaseStock(item.productId, item.quantity);
-    }
+    // for (const item of data.items) {
+    //   await ProductService.decreaseStock(item.productId, item.quantity);
+    // }
 
     await publishProductEvent("inventory_updated_success", {
       productId: "",
       eventType: "inventory_updated_success",
       categoryName: "",
     });
-
   } catch (error) {
     console.error("❌ Product stock update failed:", error);
 

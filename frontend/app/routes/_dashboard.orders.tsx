@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { Plus, Save, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Alert from "../components/Alert";
 import AddOrderModal from "../components/AddOrderModal";
 import jsPDF from "jspdf";
@@ -25,6 +27,11 @@ export interface IOrder {
 
 type SortKey = "orderId" | "customerId" | "total" | "status" | "createdAt";
 type SortOrder = "asc" | "desc";
+
+// Define error response shape for Axios errors
+interface ErrorResponse {
+  error?: { error: string }; // Updated to handle nested error object
+}
 
 export default function Orders() {
   const [orders, setOrders] = useState<IOrder[]>([]);
@@ -65,8 +72,10 @@ export default function Orders() {
         setOrders(data);
         setFilteredOrders(data);
         setTotalPages(Math.ceil(total / itemsPerPage));
-      } catch {
-        setError("Failed to fetch orders");
+      } catch (err) {
+        const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to fetch orders";
+        toast.error(errorMessage);
+        // setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -80,15 +89,20 @@ export default function Orders() {
       message: "Are you sure you want to add this order?",
       onConfirm: async () => {
         try {
-            console.log("new order is ==>",newOrder);
-            
+          console.log("new order is ==>", newOrder);
           const { data } = await axios.post(`${API_BASE_URL}/orders`, newOrder);
+          console.log("Data is ==>", data);
+          
           setOrders([...orders, data]);
           setIsModalOpen(false);
           setNewOrder({ orderId: "", customerId: "", total: 0, items: [{ productId: "", quantity: 0, price: 0 }], status: "pending" });
           setAlert(null);
-        } catch {
-          setError("Failed to add order");
+          toast.success("Order added successfully");
+        } catch (err) {
+          const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to add order";
+          console.error("Error from ==>", err);
+          toast.error(errorMessage);
+        //   setError(errorMessage);
           setAlert(null);
         }
       },
@@ -110,8 +124,11 @@ export default function Orders() {
           setOrders(orders.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)));
           setEditingStatus((prev) => { const newEdit = { ...prev }; delete newEdit[orderId]; return newEdit; });
           setAlert(null);
-        } catch {
-          setError("Failed to update status");
+          toast.success(`Order status updated to ${newStatus}`);
+        } catch (err) {
+          const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to update status";
+          toast.error(errorMessage);
+        //   setError(errorMessage);
           setAlert(null);
         }
       },
@@ -162,6 +179,8 @@ export default function Orders() {
 
   return (
     <div className="p-4 sm:p-6 max-w-full mx-auto">
+      <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} closeOnClick draggable pauseOnHover />
+
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">Orders</h2>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -256,7 +275,7 @@ export default function Orders() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
+                        <span>{order.status}</span>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}

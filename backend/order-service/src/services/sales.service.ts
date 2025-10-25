@@ -1,26 +1,29 @@
+// sales.service.ts
 import { Types } from "mongoose";
 import { Order } from "../models/order.model";
 import { getProductCounts, getProductDetails } from "./productClient.service";
+import { publishEvent } from "../queues/order.queue";
 
 export interface IProduct extends Document {
-  _id:string
+  _id: string;
   name: string;
   category: Types.ObjectId | ICategory;
   price: number;
   inventoryCount: number;
   createdAt: Date;
   updatedAt: Date;
-  isDeleted:boolean
+  isDeleted: boolean;
 }
+
 export interface ICategory extends Document {
   name: string;
   description?: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
 export const getSalesOverviewService = async () => {
   const now = new Date();
-
   const timeFrames = {
     last24h: new Date(now.getTime() - 24 * 60 * 60 * 1000),
     last7d: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
@@ -42,16 +45,20 @@ export const getSalesOverviewService = async () => {
     ]),
   ]);
 
-  return {
+  const data = {
     last24Hours: results[0][0] || { totalSales: 0, count: 0 },
     last7Days: results[1][0] || { totalSales: 0, count: 0 },
     last30Days: results[2][0] || { totalSales: 0, count: 0 },
   };
+
+  // Publish to RabbitMQ
+  await publishEvent("salesOverviewUpdate", data);
+
+  return data;
 };
 
-// 📅 Monthly Sales
 export const getMonthlySalesService = async () => {
-  return await Order.aggregate([
+  const data = await Order.aggregate([
     {
       $group: {
         _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
@@ -61,11 +68,15 @@ export const getMonthlySalesService = async () => {
     },
     { $sort: { "_id.year": -1, "_id.month": -1 } },
   ]);
+
+  // Publish to RabbitMQ
+  await publishEvent("monthlySalesUpdate", data);
+
+  return data;
 };
 
-// 📆 Yearly Sales
 export const getYearlySalesService = async () => {
-  return await Order.aggregate([
+  const data = await Order.aggregate([
     {
       $group: {
         _id: { year: { $year: "$createdAt" } },
@@ -75,9 +86,13 @@ export const getYearlySalesService = async () => {
     },
     { $sort: { "_id.year": -1 } },
   ]);
+
+  // Publish to RabbitMQ
+  await publishEvent("yearlySalesUpdate", data);
+
+  return data;
 };
 
-// 🥇 Top-selling Products
 export const getTopProductsService = async () => {
   const topProducts = await Order.aggregate([
     { $unwind: "$items" },
@@ -93,17 +108,19 @@ export const getTopProductsService = async () => {
   ]);
 
   const productIds = topProducts.map((p) => p._id);
-  console.log("product ids ===>",productIds);
-  
   const productDetails = await getProductDetails(productIds);
 
-  return topProducts.map((p) => ({
+  const data = topProducts.map((p) => ({
     ...p,
-    product: productDetails.find((d:IProduct) => d._id.toString() === p._id.toString()),
+    product: productDetails.find((d: IProduct) => d._id.toString() === p._id.toString()),
   }));
+
+  // Publish to RabbitMQ
+  await publishEvent("topProductsUpdate", data);
+
+  return data;
 };
 
-// 🧊 Low-selling (Not Moving) Products
 export const getLowProductsService = async () => {
   const productSales = await Order.aggregate([
     { $unwind: "$items" },
@@ -116,12 +133,17 @@ export const getLowProductsService = async () => {
   ]);
 
   const productIds = productSales.map((p) => p._id);
-  const allProducts = await getProductDetails(); // Fetch all active products
+  const allProducts = await getProductDetails();
   const unsold = allProducts.filter(
-    (prod:IProduct) => !productIds.some((p) => p._id === prod._id)
+    (prod: IProduct) => !productIds.some((p) => p._id === prod._id)
   );
 
-  return { lowSelling: productSales.slice(-10), unsoldProducts: unsold };
+  const data = { lowSelling: productSales.slice(-10), unsoldProducts: unsold };
+
+  // Publish to RabbitMQ
+//   await publishEvent("lowProductsUpdate", data);
+
+  return data;
 };
 
 export const getOverallMetricsService = async () => {
@@ -143,10 +165,10 @@ export const getOverallMetricsService = async () => {
         },
       },
     ]),
-     getProductCounts(),
+    getProductCounts(),
   ]);
 
-  return {
+  const data = {
     totalRevenue: orderMetrics[0]?.totalRevenue || 0,
     totalOrders: orderMetrics[0]?.totalOrders || 0,
     totalCustomers: orderMetrics[0]?.totalCustomers || 0,
@@ -154,5 +176,9 @@ export const getOverallMetricsService = async () => {
     listedProducts: productCounts.listedProducts || 0,
     unlistedProducts: productCounts.unlistedProducts || 0,
   };
-};
 
+  // Publish to RabbitMQ
+  await publishEvent("overallMetricsUpdate", data);
+
+  return data;
+};

@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   bulkSoftDeleteProductsController,
   createProductController,
+  decreaseProductStockController,
   getPaginatedProductsController,
   getProductCountsController,
   getProductsByIdsController,
@@ -21,6 +22,7 @@ router.patch("/bulk-delete", bulkSoftDeleteProductsController);
 
 router.patch("/:productId/inventory", updateInventoryController);
 router.patch("/:productId", updateProductController);
+router.patch("/:productId/decrease-stock", decreaseProductStockController); // New route
 router.get("/bulk", getProductsByIdsController);
 
 export default router;

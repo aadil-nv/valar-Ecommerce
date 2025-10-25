@@ -10,6 +10,7 @@ export const config = {
   ORDER_QUEUE_NAME:process.env.ORDER_QUEUE_NAME,
   PRODUCT_QUEUE_NAME:process.env.PRODUCT_QUEUE_NAME,
    REDIS_HOST:process.env.REDIS_HOST,
-  REDIS_PORT:process.env.REDIS_PORT
+  REDIS_PORT:process.env.REDIS_PORT,
+  WS_PORT: process.env.WS_PORT || "8081"
 
 };

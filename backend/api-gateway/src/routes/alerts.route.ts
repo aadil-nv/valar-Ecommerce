@@ -38,4 +38,24 @@ router.patch("/:id/resolve", async (req: Request, res: Response, next: NextFunct
   }
 });
 
+// Delete a single alert
+router.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await httpClient("DELETE", `${config.ALERTS_SERVICE_URL}/api/alerts/${req.params.id}`);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Clear all alerts
+router.delete("/", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await httpClient("DELETE", `${config.ALERTS_SERVICE_URL}/api/alerts`);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

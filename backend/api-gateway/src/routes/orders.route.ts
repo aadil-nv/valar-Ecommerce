@@ -30,6 +30,8 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
     const data = await httpClient("POST", `${config.ORDER_SERVICE_URL}/api/orders`, req.body);
     res.status(201).json(data);
   } catch (err) {
+    console.log("errrrrrrrrrrrrr",err);
+    
     next(err);
   }
 });

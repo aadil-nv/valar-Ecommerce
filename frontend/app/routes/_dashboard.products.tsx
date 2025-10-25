@@ -1,15 +1,21 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { Plus, Save, ChevronLeft, ChevronRight, Download, ToggleLeft, ToggleRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Alert from "../components/Alert";
 import AddProductModal from "../components/AddProductModal";
+import AddCategoryModal from "../components/AddCategoryModal";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 interface ICategory {
   _id: string;
   name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 interface IProduct {
@@ -26,18 +32,29 @@ interface IProduct {
 type SortKey = "name" | "category" | "price" | "inventoryCount" | "isDeleted" | "createdAt";
 type SortOrder = "asc" | "desc";
 
+interface ErrorResponse {
+  error?: { error: string };
+}
+
 export default function Products() {
   const [products, setProducts] = useState<IProduct[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<IProduct[]>([]);
   const [categories, setCategories] = useState<ICategory[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({
     name: "",
     category: "",
     price: 0,
     inventoryCount: 0,
   });
+  const [newCategory, setNewCategory] = useState<{ name: string; description?: string }>({
+    name: "",
+    description: undefined,
+  });
+  const [editingName, setEditingName] = useState<{ [key: string]: string | undefined }>({});
   const [editingPrice, setEditingPrice] = useState<{ [key: string]: number | undefined }>({});
+  const [editingStock, setEditingStock] = useState<{ [key: string]: number | undefined }>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,7 +69,7 @@ export default function Products() {
   });
   const itemsPerPage = 5;
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
   // Fetch products and categories
   useEffect(() => {
@@ -67,7 +84,9 @@ export default function Products() {
         setTotalPages(Math.ceil(productsResponse.data.total / itemsPerPage));
         setCategories(categoriesResponse.data);
       } catch (err) {
-        setError("Failed to fetch data");
+        const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to fetch data";
+        toast.error(errorMessage);
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -79,14 +98,12 @@ export default function Products() {
   useEffect(() => {
     let result = [...products];
 
-    // Search by name
     if (searchTerm) {
       result = result.filter((product) =>
         product.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Filter by category
     if (categoryFilter) {
       result = result.filter((product) =>
         typeof product.category === "string"
@@ -95,14 +112,12 @@ export default function Products() {
       );
     }
 
-    // Filter by status
     if (statusFilter !== "all") {
       result = result.filter((product) =>
         statusFilter === "listed" ? !product.isDeleted : product.isDeleted
       );
     }
 
-    // Sort
     result.sort((a, b) => {
       const key = sortConfig.key;
       const order = sortConfig.order === "asc" ? 1 : -1;
@@ -127,17 +142,64 @@ export default function Products() {
   // Handle adding new product
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newProduct.name.trim() || newProduct.name.length < 3) {
+      toast.error("Product name must be at least 3 characters");
+      return;
+    }
+    if (newProduct.price <= 0) {
+      toast.error("Price must be a positive number");
+      return;
+    }
+    if (newProduct.inventoryCount < 0) {
+      toast.error("Stock must be a non-negative number");
+      return;
+    }
     setAlert({
       message: "Are you sure you want to add this product?",
       onConfirm: async () => {
         try {
           const response = await axios.post(`${API_BASE_URL}/products`, newProduct);
           setProducts([...products, response.data]);
-          setIsModalOpen(false);
+          setIsProductModalOpen(false);
           setNewProduct({ name: "", category: "", price: 0, inventoryCount: 0 });
           setAlert(null);
+          toast.success("Product added successfully");
         } catch (err) {
-          setError("Failed to add product");
+          const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to add product";
+          toast.error(errorMessage);
+          setError(errorMessage);
+          setAlert(null);
+        }
+      },
+    });
+  };
+
+  // Handle adding new category
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategory.name.trim() || newCategory.name.length < 3) {
+      toast.error("Category name must be at least 3 characters");
+      return;
+    }
+    setAlert({
+      message: "Are you sure you want to add this category?",
+      onConfirm: async () => {
+        try {
+          const payload = {
+            name: newCategory.name,
+            ...(newCategory.description && { description: newCategory.description }),
+          };
+          const response = await axios.post(`${API_BASE_URL}/categories`, payload);
+          setCategories([...categories, response.data]);
+          setIsCategoryModalOpen(false);
+          setNewCategory({ name: "", description: undefined });
+          setAlert(null);
+          toast.success("Category added successfully");
+        } catch (err) {
+          const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to add category";
+          console.error("Error adding category:", err);
+          toast.error(errorMessage);
+          setError(errorMessage);
           setAlert(null);
         }
       },
@@ -156,12 +218,20 @@ export default function Products() {
             product._id === productId ? { ...product, isDeleted: !currentStatus } : product
           ));
           setAlert(null);
+          toast.success(`Product ${action}ed successfully`);
         } catch (err) {
-          setError(`Failed to ${action} product`);
+          const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || `Failed to ${action} product`;
+          toast.error(errorMessage);
+          setError(errorMessage);
           setAlert(null);
         }
       },
     });
+  };
+
+  // Handle name edit
+  const handleNameEdit = (productId: string, name: string) => {
+    setEditingName({ ...editingName, [productId]: name });
   };
 
   // Handle price edit
@@ -169,27 +239,72 @@ export default function Products() {
     setEditingPrice({ ...editingPrice, [productId]: price });
   };
 
-  // Save edited price
-  const handlePriceSave = async (productId: string) => {
+  // Handle stock edit
+  const handleStockEdit = (productId: string, stock: number) => {
+    setEditingStock({ ...editingStock, [productId]: stock });
+  };
+
+  // Save edited product (name, price, and/or stock)
+  const handleProductSave = async (productId: string) => {
+    const newName = editingName[productId];
     const newPrice = editingPrice[productId];
-    if (newPrice === undefined) return;
+    const newStock = editingStock[productId];
+
+    // Validate inputs
+    if (newName !== undefined && (!newName.trim() || newName.length < 3)) {
+      toast.error("Product name must be at least 3 characters");
+      return;
+    }
+    if (newPrice !== undefined && newPrice <= 0) {
+      toast.error("Price must be a positive number");
+      return;
+    }
+    if (newStock !== undefined && newStock < 0) {
+      toast.error("Stock must be a non-negative number");
+      return;
+    }
+
+    // Only proceed if at least one field is being edited
+    if (newName === undefined && newPrice === undefined && newStock === undefined) return;
 
     setAlert({
-      message: "Are you sure you want to update this product's price?",
+      message: "Are you sure you want to update this product?",
       onConfirm: async () => {
         try {
-          await axios.patch(`${API_BASE_URL}/products/${productId}`, { price: newPrice });
+          const payload: { name?: string; price?: number; inventoryCount?: number } = {};
+          if (newName !== undefined) payload.name = newName;
+          if (newPrice !== undefined) payload.price = newPrice;
+          if (newStock !== undefined) payload.inventoryCount = newStock;
+
+          await axios.patch(`${API_BASE_URL}/products/${productId}`, payload);
           setProducts(
             products.map((product) =>
-              product._id === productId ? { ...product, price: newPrice } : product
+              product._id === productId
+                ? {
+                    ...product,
+                    name: newName ?? product.name,
+                    price: newPrice ?? product.price,
+                    inventoryCount: newStock ?? product.inventoryCount,
+                  }
+                : product
             )
           );
+
+          const newEditingName = { ...editingName };
           const newEditingPrice = { ...editingPrice };
+          const newEditingStock = { ...editingStock };
+          delete newEditingName[productId];
           delete newEditingPrice[productId];
+          delete newEditingStock[productId];
+          setEditingName(newEditingName);
           setEditingPrice(newEditingPrice);
+          setEditingStock(newEditingStock);
           setAlert(null);
+          toast.success("Product updated successfully");
         } catch (err) {
-          setError("Failed to update price");
+          const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to update product";
+          toast.error(errorMessage);
+          setError(errorMessage);
           setAlert(null);
         }
       },
@@ -250,16 +365,26 @@ export default function Products() {
 
   return (
     <div className="relative p-4">
+      <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} closeOnClick draggable pauseOnHover />
+
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800">Products</h2>
         <div className="flex gap-2">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => setIsProductModalOpen(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors duration-200"
           >
             <Plus size={20} /> Add Product
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition-colors duration-200"
+          >
+            <Plus size={20} /> Add Category
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -280,7 +405,6 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Search and Filter Controls */}
       <div className="mb-4 flex gap-4 flex-wrap">
         <input
           type="text"
@@ -368,7 +492,39 @@ export default function Products() {
                   transition={{ duration: 0.3 }}
                   className="bg-white border-b hover:bg-gray-50 transition-colors duration-200"
                 >
-                  <td className="px-6 py-4">{product.name}</td>
+                  <td className="px-6 py-4">
+                    {editingName[product._id] !== undefined ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={editingName[product._id]}
+                          onChange={(e) => handleNameEdit(product._id, e.target.value)}
+                          className="w-40 border rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                          placeholder="Enter product name"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleProductSave(product._id)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <Save size={18} />
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span>{product.name}</span>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleNameEdit(product._id, product.name)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          Edit
+                        </motion.button>
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4">
                     {typeof product.category === "string"
                       ? product.category
@@ -390,7 +546,7 @@ export default function Products() {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handlePriceSave(product._id)}
+                          onClick={() => handleProductSave(product._id)}
                           className="text-green-600 hover:text-green-800"
                         >
                           <Save size={18} />
@@ -410,7 +566,42 @@ export default function Products() {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4">{product.inventoryCount}</td>
+                  <td className="px-6 py-4">
+                    {editingStock[product._id] !== undefined ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={editingStock[product._id]}
+                          onChange={(e) =>
+                            handleStockEdit(product._id, parseInt(e.target.value) || 0)
+                          }
+                          className="w-24 border rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                          min="0"
+                          step="1"
+                        />
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleProductSave(product._id)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <Save size={18} />
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span>{product.inventoryCount}</span>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => handleStockEdit(product._id, product.inventoryCount)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          Edit
+                        </motion.button>
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4">{product.isDeleted ? "Unlisted" : "Listed"}</td>
                   <td className="px-6 py-4">{new Date(product.createdAt).toLocaleDateString()}</td>
                   <td className="px-6 py-4">
@@ -429,7 +620,6 @@ export default function Products() {
           </tbody>
         </table>
 
-        {/* Pagination */}
         <div className="flex justify-between items-center mt-4">
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -469,17 +659,23 @@ export default function Products() {
         </div>
       </div>
 
-      {/* Add Product Modal */}
       <AddProductModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isProductModalOpen}
+        onClose={() => setIsProductModalOpen(false)}
         categories={categories}
         newProduct={newProduct}
         setNewProduct={setNewProduct}
         onSubmit={handleAddProduct}
       />
 
-      {/* Alert Confirmation */}
+      <AddCategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        newCategory={newCategory}
+        setNewCategory={setNewCategory}
+        onSubmit={handleAddCategory}
+      />
+
       <AnimatePresence>
         {alert && (
           <Alert

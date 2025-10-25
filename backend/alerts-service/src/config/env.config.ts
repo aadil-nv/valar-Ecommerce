@@ -5,5 +5,6 @@ export const config = {
   PORT: process.env.PORT,
   MONGO_URI: process.env.MONGO_URI ,
   RABBITMQ_URI: process.env.RABBITMQ_URI,
-  ALERT_QUEUE_NAME :process.env.ALERT_QUEUE_NAME  
+  ALERT_QUEUE_NAME :process.env.ALERT_QUEUE_NAME,
+  WS_PORT: process.env.WS_PORT || "8081"
 };

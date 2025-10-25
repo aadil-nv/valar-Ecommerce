@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import "./app.css";
 
+
 interface RootLayoutProps {
   children: React.ReactNode;
 }

@@ -103,4 +103,25 @@ router.get("/bulk/:ids", async (req: Request, res: Response, next: NextFunction)
 });
 
 
+router.patch("/:id/decrease-stock", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { quantity } = req.body;
+
+    // Validate quantity
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      return res.status(400).json({ error: "Quantity must be a positive integer" });
+    }
+
+    const data = await httpClient(
+      "PATCH",
+      `${config.PRODUCT_SERVICE_URL}/api/products/${id}/decrease-stock`,
+      { quantity }
+    );
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

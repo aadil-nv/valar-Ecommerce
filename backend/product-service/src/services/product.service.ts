@@ -85,7 +85,10 @@ export const updateInventory = async (productId: string, count: number) => {
   return product;
 };
 
-export const decreaseStock = async (productId: string, quantity: number) => {    
+export const decreaseStock = async (productId: string, quantity: number) => {  
+    
+    console.log("calling decres=================================================");
+    
   const product = await Product.findById(productId);
   if (!product) throw new Error("Product not found");
   if (product.inventoryCount < quantity) throw new Error("Not enough inventory");
@@ -98,6 +101,8 @@ export const decreaseStock = async (productId: string, quantity: number) => {
 
   // Send alert if inventory below 10
   if (product.inventoryCount < 10) {
+    console.log("***********hdfbhs****************");
+    
     sendInventoryAlert(product); // fire-and-forget
   }
 
