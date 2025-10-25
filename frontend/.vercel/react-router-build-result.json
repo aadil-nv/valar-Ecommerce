@@ -28,12 +28,6 @@
         "parentId": "routes/_dashboard._layout",
         "file": "routes/_dashboard.orders.tsx",
         "path": "orders"
-      },
-      "routes/_dashboard.alerts": {
-        "id": "routes/_dashboard.alerts",
-        "parentId": "routes/_dashboard._layout",
-        "file": "routes/_dashboard.alerts.tsx",
-        "path": "alerts"
       }
     }
   },
@@ -76,12 +70,6 @@
         "parentId": "routes/_dashboard._layout",
         "file": "routes/_dashboard.orders.tsx",
         "path": "orders"
-      },
-      "routes/_dashboard.alerts": {
-        "id": "routes/_dashboard.alerts",
-        "parentId": "routes/_dashboard._layout",
-        "file": "routes/_dashboard.alerts.tsx",
-        "path": "alerts"
       }
     },
     "routeDiscovery": {
@@ -110,10 +98,6 @@
               {
                 "file": "routes/_dashboard.orders.tsx",
                 "path": "orders"
-              },
-              {
-                "file": "routes/_dashboard.alerts.tsx",
-                "path": "alerts"
               }
             ]
           }
