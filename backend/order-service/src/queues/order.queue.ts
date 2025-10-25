@@ -81,9 +81,7 @@ export const connectQueue = async (): Promise<void> => {
 
 export const publishEvent = async (event: string, data: EventData): Promise<void> => {
   if (!channel) throw new Error("RabbitMQ channel not initialized");
-  const message: EventMessage = { event, data };
-  console.log(`Publishing event: ${event} with data:`, JSON.stringify(data, null, 2));
-  
+  const message: EventMessage = { event, data };  
   channel.sendToQueue(QUEUE_NAME, Buffer.from(JSON.stringify(message)), { persistent: true });
 };
 
