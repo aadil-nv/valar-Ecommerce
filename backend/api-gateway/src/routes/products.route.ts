@@ -13,6 +13,14 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
     next(err);
   }
 });
+router.get("/counts", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await httpClient("GET", `${config.PRODUCT_SERVICE_URL}/api/products/counts`);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
 router.get("/paginated", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { page = "1", limit = "10" } = req.query;

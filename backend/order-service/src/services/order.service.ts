@@ -3,6 +3,7 @@ import { IOrder, Order } from "../models/order.model";
 import { sendOrderFailedAlert } from "./alert.service";
 import RedisClient from "../config/redis"; // Adjust path to your Redis client config
 
+
 export type SortableOrderFields = "orderId" | "customerId" | "total" | "status" | "createdAt";
 
 export interface IQueryOptions {
@@ -125,3 +126,5 @@ export const getOrdersWithQuery = async (options: IQueryOptions) => {
   console.log(`getOrdersWithQuery (DB) took ${(endTime - startTime).toFixed(2)} ms`);
   return result;
 };
+
+

@@ -13,6 +13,7 @@ import { connectProductQueue } from "./queues/product.queue";
 
 const app = express();
 
+
 app.use(cors());
 app.use(express.json());
 app.use(logger);

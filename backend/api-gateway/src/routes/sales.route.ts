@@ -24,6 +24,14 @@ router.get("/monthly", async (req: Request, res: Response, next: NextFunction) =
     next(err);
   }
 });
+router.get("/overall", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await httpClient("GET", `${ORDER_SERVICE_URL}/api/sales/overall`);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // 📅 Yearly Sales
 router.get("/yearly", async (req: Request, res: Response, next: NextFunction) => {

@@ -150,6 +150,33 @@ export const getProductsByIdsService = async (productIds: string[]) => {
   return products;
 };
 
+export const getProductCountsService = async () => {
+  const counts = await Product.aggregate([
+    {
+      $group: {
+        _id: null,
+        totalProducts: { $sum: 1 },
+        listedProducts: { $sum: { $cond: [{ $eq: ["$isDeleted", false] }, 1, 0] } },
+        unlistedProducts: { $sum: { $cond: [{ $eq: ["$isDeleted", true] }, 1, 0] } },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        totalProducts: 1,
+        listedProducts: 1,
+        unlistedProducts: 1,
+      },
+    },
+  ]);
+
+  return counts[0] || {
+    totalProducts: 0,
+    listedProducts: 0,
+    unlistedProducts: 0,
+  };
+};
+
 // Helper function to invalidate paginated cache
 const invalidatePaginatedCache = async () => {
   const keys = await RedisClient.keys("products:page:*:limit:*");

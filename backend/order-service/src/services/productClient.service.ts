@@ -9,3 +9,9 @@ export const getProductDetails = async (productIds?: string[]) => {
   const { data } = await axios.get(url);
   return data;
 };
+
+export const getProductCounts = async () => {
+  const url = `${config.PRODUCT_SERVICE_URL}/api/products/counts`;
+  const { data } = await axios.get(url);
+  return data;
+};

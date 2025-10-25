@@ -3,6 +3,7 @@ import {
   bulkSoftDeleteProductsController,
   createProductController,
   getPaginatedProductsController,
+  getProductCountsController,
   getProductsByIdsController,
   getProductsController,
   updateInventoryController,
@@ -14,7 +15,7 @@ const router = Router();
 router.post("/", createProductController); 
 router.get("/", getProductsController);
 router.get("/paginated", getPaginatedProductsController);
-
+router.get("/counts", getProductCountsController); // Product counts (total, listed, unlisted)
 
 router.patch("/bulk-delete", bulkSoftDeleteProductsController);
 

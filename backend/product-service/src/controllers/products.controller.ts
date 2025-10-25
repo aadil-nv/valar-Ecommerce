@@ -139,3 +139,12 @@ export const getPaginatedProductsController = async (req: Request, res: Response
     next(err);
   }
 };
+
+export const getProductCountsController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const counts = await ProductService.getProductCountsService();
+    res.json(counts);
+  } catch (err) {
+    next(err);
+  }
+};

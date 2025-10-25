@@ -5,6 +5,7 @@ import {
   getYearlySalesService,
   getTopProductsService,
   getLowProductsService,
+  getOverallMetricsService,
 } from "../services/sales.service";
 
 export const getSalesOverviewController = async (req: Request, res: Response, next: NextFunction) => {
@@ -46,6 +47,16 @@ export const getTopProductsController = async (req: Request, res: Response, next
 export const getLowProductsController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await getLowProductsService();
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+export const getOverallMetricsController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await getOverallMetricsService();
     res.json(data);
   } catch (err) {
     next(err);

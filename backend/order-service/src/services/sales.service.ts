@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { Order } from "../models/order.model";
-import { getProductDetails } from "./productClient.service";
+import { getProductCounts, getProductDetails } from "./productClient.service";
 
 export interface IProduct extends Document {
   _id:string
@@ -123,3 +123,36 @@ export const getLowProductsService = async () => {
 
   return { lowSelling: productSales.slice(-10), unsoldProducts: unsold };
 };
+
+export const getOverallMetricsService = async () => {
+  const [orderMetrics, productCounts] = await Promise.all([
+    Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$total" },
+          totalOrders: { $sum: 1 },
+          customerIds: { $addToSet: "$customerId" },
+        },
+      },
+      {
+        $project: {
+          totalRevenue: 1,
+          totalOrders: 1,
+          totalCustomers: { $size: "$customerIds" },
+        },
+      },
+    ]),
+     getProductCounts(),
+  ]);
+
+  return {
+    totalRevenue: orderMetrics[0]?.totalRevenue || 0,
+    totalOrders: orderMetrics[0]?.totalOrders || 0,
+    totalCustomers: orderMetrics[0]?.totalCustomers || 0,
+    totalProducts: productCounts.totalProducts || 0,
+    listedProducts: productCounts.listedProducts || 0,
+    unlistedProducts: productCounts.unlistedProducts || 0,
+  };
+};
+
