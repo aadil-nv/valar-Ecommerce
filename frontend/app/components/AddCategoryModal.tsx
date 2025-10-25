@@ -22,7 +22,7 @@ export default function AddCategoryModal({
     e.preventDefault();
     if (!newCategory.name.trim()) {
       // Validation moved to Products.tsx, but we can keep this as a fallback
-      // Rely on Products.tsx for toast notifications
+      // Rely on Products.tsx for toast notificationssss
       return;
     }
     onSubmit(e);
