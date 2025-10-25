@@ -5,6 +5,5 @@ export default [
     index("routes/_dashboard._index.tsx"),
     route("products", "routes/_dashboard.products.tsx"),
     route("orders", "routes/_dashboard.orders.tsx"),
-    route("alerts", "routes/_dashboard.alerts.tsx"),
   ]),
 ] satisfies RouteConfig;

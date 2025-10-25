@@ -19,7 +19,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: "Dashboard", icon: <Home size={20} />, path: "/" },
     { name: "Products", icon: <Package size={20} />, path: "/products" },
     { name: "Orders", icon: <ShoppingCart size={20} />, path: "/orders" },
-    { name: "Alerts", icon: <Bell size={20} />, path: "/alerts" },
   ];
 
   return (
