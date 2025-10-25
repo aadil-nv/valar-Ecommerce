@@ -11,6 +11,7 @@
   "dependencies": {
     "@react-router/node": "^7.9.2",
     "@react-router/serve": "^7.9.2",
+    "@vercel/react-router": "^1.2.3",
     "axios": "^1.12.2",
     "chart.js": "^4.5.1",
     "framer-motion": "^12.23.24",
