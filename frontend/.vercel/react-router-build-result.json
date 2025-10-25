@@ -1,0 +1,129 @@
+{
+  "buildManifest": {
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "root.tsx",
+        "path": ""
+      },
+      "routes/_dashboard._layout": {
+        "id": "routes/_dashboard._layout",
+        "parentId": "root",
+        "file": "routes/_dashboard._layout.tsx"
+      },
+      "routes/_dashboard._index": {
+        "id": "routes/_dashboard._index",
+        "parentId": "routes/_dashboard._layout",
+        "file": "routes/_dashboard._index.tsx",
+        "index": true
+      },
+      "routes/_dashboard.products": {
+        "id": "routes/_dashboard.products",
+        "parentId": "routes/_dashboard._layout",
+        "file": "routes/_dashboard.products.tsx",
+        "path": "products"
+      },
+      "routes/_dashboard.orders": {
+        "id": "routes/_dashboard.orders",
+        "parentId": "routes/_dashboard._layout",
+        "file": "routes/_dashboard.orders.tsx",
+        "path": "orders"
+      },
+      "routes/_dashboard.alerts": {
+        "id": "routes/_dashboard.alerts",
+        "parentId": "routes/_dashboard._layout",
+        "file": "routes/_dashboard.alerts.tsx",
+        "path": "alerts"
+      }
+    }
+  },
+  "reactRouterConfig": {
+    "appDirectory": "C:/Users/ASUS/Desktop/Valar Ecommerce/frontend/app",
+    "basename": "/",
+    "buildDirectory": "C:/Users/ASUS/Desktop/Valar Ecommerce/frontend/build",
+    "future": {
+      "v8_middleware": false,
+      "unstable_optimizeDeps": false,
+      "unstable_splitRouteModules": false,
+      "unstable_subResourceIntegrity": false,
+      "unstable_viteEnvironmentApi": false
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "root.tsx",
+        "path": ""
+      },
+      "routes/_dashboard._layout": {
+        "id": "routes/_dashboard._layout",
+        "parentId": "root",
+        "file": "routes/_dashboard._layout.tsx"
+      },
+      "routes/_dashboard._index": {
+        "id": "routes/_dashboard._index",
+        "parentId": "routes/_dashboard._layout",
+        "file": "routes/_dashboard._index.tsx",
+        "index": true
+      },
+      "routes/_dashboard.products": {
+        "id": "routes/_dashboard.products",
+        "parentId": "routes/_dashboard._layout",
+        "file": "routes/_dashboard.products.tsx",
+        "path": "products"
+      },
+      "routes/_dashboard.orders": {
+        "id": "routes/_dashboard.orders",
+        "parentId": "routes/_dashboard._layout",
+        "file": "routes/_dashboard.orders.tsx",
+        "path": "orders"
+      },
+      "routes/_dashboard.alerts": {
+        "id": "routes/_dashboard.alerts",
+        "parentId": "routes/_dashboard._layout",
+        "file": "routes/_dashboard.alerts.tsx",
+        "path": "alerts"
+      }
+    },
+    "routeDiscovery": {
+      "mode": "initial"
+    },
+    "serverBuildFile": "index.js",
+    "serverModuleFormat": "esm",
+    "ssr": false,
+    "unstable_routeConfig": [
+      {
+        "id": "root",
+        "path": "",
+        "file": "root.tsx",
+        "children": [
+          {
+            "file": "routes/_dashboard._layout.tsx",
+            "children": [
+              {
+                "file": "routes/_dashboard._index.tsx",
+                "index": true
+              },
+              {
+                "file": "routes/_dashboard.products.tsx",
+                "path": "products"
+              },
+              {
+                "file": "routes/_dashboard.orders.tsx",
+                "path": "orders"
+              },
+              {
+                "file": "routes/_dashboard.alerts.tsx",
+                "path": "alerts"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "viteConfig": {
+    "build": {
+      "assetsDir": "assets"
+    }
+  }
+}
