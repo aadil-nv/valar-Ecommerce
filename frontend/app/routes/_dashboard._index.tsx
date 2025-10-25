@@ -8,7 +8,9 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend);
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8081";
+const WS_URL = import.meta.env.VITE_WS_URL as string
+console.log("dashbord url is ==>",WS_URL);
+
 
 interface OverallMetrics {
   totalRevenue: number;
@@ -100,7 +102,7 @@ export default function DashboardHome() {
       ws = new WebSocket(WS_URL);
 
       ws.onopen = () => {
-        console.log("Connected to WebSocket server");
+        console.log("Dashborad Connected to WebSocket server");
         setError(null); // Clear any previous WebSocket errors
         reconnectAttempts = 0; // Reset reconnect attempts
       };
