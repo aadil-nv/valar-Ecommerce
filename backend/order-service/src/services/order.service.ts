@@ -4,6 +4,7 @@ import { sendOrderFailedAlert } from "./alert.service";
 import RedisClient from "../config/redis"; // Adjust path to your Redis client config
 import { publishEvent } from "../queues/order.queue"; // Import from order.queue.ts
 import { decreaseProductStock } from "../services/productClient.service";
+import { getCustomers } from "./customer.service";
 
 export type SortableOrderFields = "orderId" | "customerId" | "total" | "status" | "createdAt";
 
@@ -33,6 +34,18 @@ interface OrderEventData {
   status: string;
   createdAt: string;
 }
+
+export interface Customer  {
+    _id:string
+  customerName: string;
+  email: string;
+  isBlocked: boolean;
+  phone?: string;
+  deletedAt?: Date; // For soft delete
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 
 const invalidateOrderCache = async () => {
   try {
@@ -188,23 +201,52 @@ export const getOrdersWithQuery = async (options: IQueryOptions) => {
     query.status = status;
   }
 
-  const [orders, total] = await Promise.all([
-    Order.find(query)
-      .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
-      .skip((page - 1) * limit)
-      .limit(limit),
-    Order.countDocuments(query),
-  ]);
-
-  const result = { data: orders, page, limit, total, totalPages: Math.ceil(total / limit) };
-
   try {
-    await RedisClient.setex(cacheKey, 300, JSON.stringify(result));
-  } catch (err) {
-    console.error("Failed to cache orders with query:", err);
-  }
+    // Fetch all customers
+    const customers = await getCustomers();
+    console.log("customers i s==>",customers);
+    
+    const customerMap = new Map(customers.map((c:Customer) => [c._id, c.customerName]));
 
-  const endTime = performance.now();
-  console.log(`getOrdersWithQuery (DB) took ${(endTime - startTime).toFixed(2)} ms`);
-  return result;
+    // Fetch orders
+    const [orders, total] = await Promise.all([
+      Order.find(query)
+        .sort({ [sortBy]: sortOrder === "asc" ? 1 : -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Order.countDocuments(query),
+    ]);
+
+    // Enrich orders with customerName
+    const enrichedOrders = orders.map((order) => ({
+      ...order,
+      customerName: customerMap.get(order.customerId) || "Unknown Customer",
+    }));
+
+    const result = {
+      data: enrichedOrders,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    };
+
+    try {
+      await RedisClient.setex(cacheKey, 300, JSON.stringify(result));
+    } catch (err) {
+      console.error("Failed to cache orders with query:", err);
+    }
+
+    const endTime = performance.now();
+    console.log(`getOrdersWithQuery (DB) took ${(endTime - startTime).toFixed(2)} ms`);
+
+    console.log("orders data is ",result);
+    
+    return result;
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Failed to fetch orders or customers";
+    console.error("Error in getOrdersWithQuery:", errorMessage);
+    throw new Error(errorMessage);
+  }
 };

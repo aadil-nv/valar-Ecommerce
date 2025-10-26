@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Home, Package, ShoppingCart, Bell, Settings, LogOut } from "lucide-react";
+import { Menu, X, Home, Package, ShoppingCart, Bell, Settings, LogOut, User } from "lucide-react";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,6 +19,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     { name: "Dashboard", icon: <Home size={20} />, path: "/" },
     { name: "Products", icon: <Package size={20} />, path: "/products" },
     { name: "Orders", icon: <ShoppingCart size={20} />, path: "/orders" },
+    { name: "Customers", icon: <User size={20} />, path: "/customers" },
   ];
 
   return (

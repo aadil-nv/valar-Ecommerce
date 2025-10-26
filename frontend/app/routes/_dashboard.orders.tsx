@@ -19,18 +19,18 @@ export interface IOrder {
   _id: string;
   orderId: string;
   customerId: string;
+  customerName?: string;
   total: number;
   items: IOrderItem[];
   status: "pending" | "shipped" | "delivered" | "cancelled";
   createdAt: Date;
 }
 
-type SortKey = "orderId" | "customerId" | "total" | "status" | "createdAt";
+type SortKey = "orderId" | "customerName" | "total" | "status" | "createdAt";
 type SortOrder = "asc" | "desc";
 
-// Define error response shape for Axios errors
 interface ErrorResponse {
-  error?: { error: string }; // Updated to handle nested error object
+  error?: { error: string };
 }
 
 export default function Orders() {
@@ -45,70 +45,87 @@ export default function Orders() {
     status: "pending" as IOrder["status"],
   });
   const [editingStatus, setEditingStatus] = useState<{ [key: string]: IOrder["status"] | undefined }>({});
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [alert, setAlert] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | IOrder["status"]>("all");
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; order: SortOrder }>({ key: "createdAt", order: "desc" });
+  const [sortConfig, setSortConfig] = useState<{ key: SortKey; order: SortOrder }>({
+    key: "createdAt",
+    order: "desc",
+  });
   const itemsPerPage = 5;
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
+  /* --------------------------------------------------------------
+     FETCH ORDERS – runs when page / filters / sort change
+  -------------------------------------------------------------- */
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: itemsPerPage.toString(),
+        search: searchTerm,
+        sortBy: sortConfig.key,
+        sortOrder: sortConfig.order,
+        ...(statusFilter !== "all" && { status: statusFilter }),
+      });
+      const { data } = await axios.get(`${API_BASE_URL}/orders/query?${params}`);
+      setOrders(data.data);
+      setFilteredOrders(data.data);
+      setTotalPages(Math.ceil(data.total / itemsPerPage));
+    } catch (err) {
+      const msg =
+        (err as AxiosError<ErrorResponse>).response?.data?.error?.error ||
+        "Failed to fetch orders";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchOrders = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({
-          page: currentPage.toString(),
-          limit: itemsPerPage.toString(),
-          search: searchTerm,
-          sortBy: sortConfig.key,
-          sortOrder: sortConfig.order,
-          ...(statusFilter !== "all" && { status: statusFilter }),
-        });
-        const { data: { data, total } } = await axios.get(`${API_BASE_URL}/orders/query?${params}`);
-        setOrders(data);
-        setFilteredOrders(data);
-        setTotalPages(Math.ceil(total / itemsPerPage));
-      } catch (err) {
-        const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to fetch orders";
-        toast.error(errorMessage);
-        // setError(errorMessage);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchOrders();
   }, [currentPage, searchTerm, statusFilter, sortConfig]);
 
+  /* --------------------------------------------------------------
+     ADD ORDER – after POST we re-fetch the current page
+  -------------------------------------------------------------- */
   const handleAddOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setAlert({
       message: "Are you sure you want to add this order?",
       onConfirm: async () => {
         try {
-          console.log("new order is ==>", newOrder);
-          const { data } = await axios.post(`${API_BASE_URL}/orders`, newOrder);
-          console.log("Data is ==>", data);
-          
-          setOrders([...orders, data]);
+          await axios.post(`${API_BASE_URL}/orders`, newOrder);
           setIsModalOpen(false);
-          setNewOrder({ orderId: "", customerId: "", total: 0, items: [{ productId: "", quantity: 0, price: 0 }], status: "pending" });
-          setAlert(null);
+          setNewOrder({
+            orderId: "",
+            customerId: "",
+            total: 0,
+            items: [{ productId: "", quantity: 0, price: 0 }],
+            status: "pending",
+          });
           toast.success("Order added successfully");
+          // RE-FETCH CURRENT PAGE
+          fetchOrders();
         } catch (err) {
-          const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to add order";
-          console.error("Error from ==>", err);
-          toast.error(errorMessage);
-        //   setError(errorMessage);
+          const msg =
+            (err as AxiosError<ErrorResponse>).response?.data?.error?.error ||
+            "Failed to add order";
+          toast.error(msg);
+        } finally {
           setAlert(null);
         }
       },
     });
   };
 
+  /* --------------------------------------------------------------
+     STATUS EDIT / SAVE
+  -------------------------------------------------------------- */
   const handleStatusEdit = (orderId: string, status: IOrder["status"]) => {
     setEditingStatus({ ...editingStatus, [orderId]: status });
   };
@@ -117,53 +134,71 @@ export default function Orders() {
     const newStatus = editingStatus[orderId];
     if (!newStatus) return;
     setAlert({
-      message: `Are you sure you want to update this order's status to ${newStatus}?`,
+      message: `Change status to ${newStatus}?`,
       onConfirm: async () => {
         try {
           await axios.patch(`${API_BASE_URL}/orders/${orderId}/status`, { status: newStatus });
-          setOrders(orders.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)));
-          setEditingStatus((prev) => { const newEdit = { ...prev }; delete newEdit[orderId]; return newEdit; });
-          setAlert(null);
-          toast.success(`Order status updated to ${newStatus}`);
+          setOrders((prev) =>
+            prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o))
+          );
+          setEditingStatus((prev) => {
+            const copy = { ...prev };
+            delete copy[orderId];
+            return copy;
+          });
+          toast.success(`Status → ${newStatus}`);
         } catch (err) {
-          const errorMessage = (err as AxiosError<ErrorResponse>).response?.data?.error?.error || "Failed to update status";
-          toast.error(errorMessage);
-        //   setError(errorMessage);
+          toast.error(
+            (err as AxiosError<ErrorResponse>).response?.data?.error?.error ||
+              "Failed to update status"
+          );
+        } finally {
           setAlert(null);
         }
       },
     });
   };
 
+  /* --------------------------------------------------------------
+     PAGINATION / SORT
+  -------------------------------------------------------------- */
   const handlePageChange = (page: number) => page >= 1 && page <= totalPages && setCurrentPage(page);
+  const handleSort = (key: SortKey) =>
+    setSortConfig((prev) => ({
+      key,
+      order: prev.key === key && prev.order === "asc" ? "desc" : "asc",
+    }));
 
-  const handleSort = (key: SortKey) => setSortConfig((prev) => ({ key, order: prev.key === key && prev.order === "asc" ? "desc" : "asc" }));
-
+  /* --------------------------------------------------------------
+     EXPORT CSV / PDF
+  -------------------------------------------------------------- */
   const exportData = (format: "csv" | "pdf") => {
-    const data = filteredOrders.map((o) => ({
+    const rows = filteredOrders.map((o) => ({
       orderId: o.orderId,
-      customerId: o.customerId,
+      customerName: o.customerName || "Unknown Customer",
       total: `$${o.total.toFixed(2)}`,
       status: o.status,
       createdAt: new Date(o.createdAt).toLocaleDateString(),
     }));
+
     if (format === "csv") {
-      const headers = ["Order ID,Customer ID,Total,Status,Created At"];
-      const rows = data.map((o) => `${o.orderId},${o.customerId},${o.total},${o.status},${o.createdAt}`);
-      const blob = new Blob([[...headers, ...rows].join("\n")], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "orders.csv";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const csv = [
+        "Order ID,Customer Name,Total,Status,Created At",
+        ...rows.map((r) => `${r.orderId},${r.customerName},${r.total},${r.status},${r.createdAt}`),
+      ].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "orders.csv";
+      a.click();
     } else {
       const doc = new jsPDF();
       doc.text("Orders List", 14, 20);
       autoTable(doc, {
         startY: 30,
-        head: [["Order ID", "Customer ID", "Total", "Status", "Created At"]],
-        body: data.map((o) => [o.orderId, o.customerId, o.total, o.status, o.createdAt]),
+        head: [["Order ID", "Customer Name", "Total", "Status", "Created At"]],
+        body: rows.map((r) => [r.orderId, r.customerName, r.total, r.status, r.createdAt]),
       });
       doc.save("orders.pdf");
     }
@@ -171,7 +206,7 @@ export default function Orders() {
 
   const columns: { key: SortKey; label: string }[] = [
     { key: "orderId", label: "Order ID" },
-    { key: "customerId", label: "Customer ID" },
+    { key: "customerName", label: "Customer Name" },
     { key: "total", label: "Total" },
     { key: "status", label: "Status" },
     { key: "createdAt", label: "Created At" },
@@ -181,31 +216,42 @@ export default function Orders() {
     <div className="p-4 sm:p-6 max-w-full mx-auto">
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} closeOnClick draggable pauseOnHover />
 
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 sm:mb-0">Orders</h2>
         <div className="flex flex-col sm:flex-row gap-2">
-          {[
-            { onClick: () => setIsModalOpen(true), icon: Plus, label: "Add Order", color: "blue" },
-            { onClick: () => exportData("csv"), icon: Download, label: "Export CSV", color: "green" },
-            { onClick: () => exportData("pdf"), icon: Download, label: "Export PDF", color: "purple" },
-          ].map(({ onClick, icon: Icon, label, color }) => (
-            <motion.button
-              key={label}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onClick}
-              className={`bg-${color}-600 text-white px-4 py-2 rounded-lg hover:bg-${color}-700 flex items-center gap-2 w-full sm:w-auto`}
-            >
-              <Icon size={20} /> {label}
-            </motion.button>
-          ))}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 w-full sm:w-auto"
+          >
+            <Plus size={20} /> Add Order
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => exportData("csv")}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 w-full sm:w-auto"
+          >
+            <Download size={20} /> Export CSV
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => exportData("pdf")}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2 w-full sm:w-auto"
+          >
+            <Download size={20} /> Export PDF
+          </motion.button>
         </div>
       </div>
 
+      {/* Filters */}
       <div className="mb-4 flex flex-col sm:flex-row gap-4 flex-wrap">
         <input
           type="text"
-          placeholder="Search by Order ID or Customer ID..."
+          placeholder="Search by Order ID or Customer Name..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="border rounded-lg px-4 py-2 w-full focus:ring-2 focus:ring-blue-500"
@@ -223,17 +269,23 @@ export default function Orders() {
         </select>
       </div>
 
-      {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-500 mb-4">{error}</motion.p>}
-      {loading && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-gray-600">Loading...</motion.p>}
+      {/* Loading / Error */}
+      {loading && <p className="text-gray-600">Loading...</p>}
 
+      {/* Table */}
       <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-200 overflow-x-auto">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Order List</h3>
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
               {columns.map(({ key, label }) => (
-                <th key={key} className="px-3 sm:px-6 py-3 cursor-pointer" onClick={() => handleSort(key)}>
-                  {label} {sortConfig.key === key && (sortConfig.order === "asc" ? "↑" : "↓")}
+                <th
+                  key={key}
+                  className="px-3 sm:px-6 py-3 cursor-pointer"
+                  onClick={() => handleSort(key)}
+                >
+                  {label}{" "}
+                  {sortConfig.key === key && (sortConfig.order === "asc" ? "↑" : "↓")}
                 </th>
               ))}
             </tr>
@@ -246,22 +298,27 @@ export default function Orders() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
                   className="bg-white border-b hover:bg-gray-50"
                 >
                   <td className="px-3 sm:px-6 py-4">{order.orderId}</td>
-                  <td className="px-3 sm:px-6 py-4">{order.customerId}</td>
+                  <td className="px-3 sm:px-6 py-4">
+                    {order.customerName || "Unknown Customer"}
+                  </td>
                   <td className="px-3 sm:px-6 py-4">${order.total.toFixed(2)}</td>
                   <td className="px-3 sm:px-6 py-4">
                     {editingStatus[order._id] !== undefined ? (
                       <div className="flex items-center gap-2">
                         <select
                           value={editingStatus[order._id]}
-                          onChange={(e) => handleStatusEdit(order._id, e.target.value as IOrder["status"])}
+                          onChange={(e) =>
+                            handleStatusEdit(order._id, e.target.value as IOrder["status"])
+                          }
                           className="border rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
                         >
-                          {["pending", "shipped", "delivered", "cancelled"].map((status) => (
-                            <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                          {["pending", "shipped", "delivered", "cancelled"].map((s) => (
+                            <option key={s} value={s}>
+                              {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </option>
                           ))}
                         </select>
                         <motion.button
@@ -287,14 +344,16 @@ export default function Orders() {
                       </div>
                     )}
                   </td>
-                  <td className="px-3 sm:px-6 py-4">{new Date(order.createdAt).toLocaleDateString()}</td>
-                  <td className="px-3 sm:px-6 py-4"></td>
+                  <td className="px-3 sm:px-6 py-4">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </td>
                 </motion.tr>
               ))}
             </AnimatePresence>
           </tbody>
         </table>
 
+        {/* Pagination */}
         <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4">
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -305,6 +364,7 @@ export default function Orders() {
           >
             <ChevronLeft size={18} /> Previous
           </motion.button>
+
           <div className="flex gap-2 flex-wrap justify-center">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <motion.button
@@ -312,12 +372,15 @@ export default function Orders() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handlePageChange(page)}
-                className={`px-3 py-1 rounded-md ${currentPage === page ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+                className={`px-3 py-1 rounded-md ${
+                  currentPage === page ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-100"
+                }`}
               >
                 {page}
               </motion.button>
             ))}
           </div>
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -330,6 +393,7 @@ export default function Orders() {
         </div>
       </div>
 
+      {/* Modals */}
       <AddOrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -337,7 +401,15 @@ export default function Orders() {
         setNewOrder={setNewOrder}
         onSubmit={handleAddOrder}
       />
-      <AnimatePresence>{alert && <Alert message={alert.message} onConfirm={alert.onConfirm} onCancel={() => setAlert(null)} />}</AnimatePresence>
+      <AnimatePresence>
+        {alert && (
+          <Alert
+            message={alert.message}
+            onConfirm={alert.onConfirm}
+            onCancel={() => setAlert(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

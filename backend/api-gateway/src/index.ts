@@ -4,7 +4,7 @@ import "colors";
 import { config } from "./config/env.config";
 import ordersRouter from "./routes/orders.route";
 import productsRouter from "./routes/products.route";
-import analyticsRouter from "./routes/analytics.route";
+import customersRouter from "./routes/customer.route";
 import categoryRouter from "./routes/category.route";
 import alertsRouter from "./routes/alerts.route";
 import salesRouter from "./routes/sales.route";
@@ -19,7 +19,7 @@ app.use(logger);
 
 app.use("/api/orders", ordersRouter);
 app.use("/api/products", productsRouter);
-app.use("/api/analytics", analyticsRouter);
+app.use("/api/customer", customersRouter);
 app.use("/api/alerts", alertsRouter);
 app.use("/api/categories", categoryRouter);
 app.use("/api/sales", salesRouter);
