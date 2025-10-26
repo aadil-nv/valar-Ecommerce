@@ -1,0 +1,193 @@
+# 🧩 E-Commerce Microservices Backend
+
+This repository contains the **backend** of an e-commerce system built using **microservices architecture**.  
+Each service runs independently and communicates via **REST APIs** and **RabbitMQ**.  
+Real-time updates are handled with **WebSockets**, and caching is managed using **Redis**.
+
+---
+
+## ⚙️ Tech Stack
+
+- **Node.js** + **Express** + **TypeScript**
+- **MongoDB** (per service database)
+- **RabbitMQ** (asynchronous communication)
+- **Redis** (caching)
+- **WebSocket** (real-time updates)
+- **Docker & Docker Compose**
+- **API Gateway** (centralized validation, error handling, rate limiting)
+
+---
+
+## 🏗️ Services Overview
+
+| Service | Description |
+|----------|--------------|
+| **API Gateway** | Central entry point, validates requests, applies rate limiting, proxies to other services |
+| **Customer Service** | Manages customer registration and data |
+| **Product Service** | Handles product data, inventory updates |
+| **Order Service** | Manages order creation, updates, and status tracking |
+| **Alert Service** | Sends notifications and alerts for specific events |
+| **Analytics Service** | Collects and processes analytics data (optional) |
+
+---
+
+## 🧾 .env Configuration
+
+Each service requires its own `.env` file located in its service folder.
+
+### 🛡️ API Gateway (`/api-gateway/.env`)
+```env
+PORT=5000
+
+# Microservices URLs (local development)
+ORDER_SERVICE_URL=http://localhost:5001
+PRODUCT_SERVICE_URL=http://localhost:5002
+CUSTOMER_SERVICE_URL=http://localhost:5003
+ALERTS_SERVICE_URL=http://localhost:5004
+
+
+👤 Customer Service (/customer-service/.env)
+env
+Copy code
+PORT=5003
+MONGO_URI=mongodb://mongo-customer:27017/customerdb
+RABBITMQ_URL=amqp://rabbitmq:5672
+
+
+📦 Product Service (/product-service/.env)
+env
+Copy code
+PORT=5002
+MONGO_URI=mongodb://mongo-product:27017/productdb
+RABBITMQ_URI=amqp://localhost
+ALERTS_SERVICE_URL=http://localhost:5004
+ORDER_QUEUE_NAME=orders
+PRODUCT_QUEUE_NAME=products
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+🛒 Order Service (/order-service/.env)
+env
+Copy code
+PORT=5001
+MONGO_URI=mongodb://mongo-product:27017/productdb
+RABBITMQ_URI=amqp://localhost
+PRODUCT_SERVICE_URL=http://localhost:5002
+CUSTOMER_SERVICE_URL=http://localhost:5003
+ORDER_QUEUE_NAME=orders
+PRODUCT_QUEUE_NAME=products
+REDIS_HOST=localhost
+REDIS_PORT=6379
+WS_PORT=8081
+
+🚨 Alert Service (/alert-service/.env)
+env
+Copy code
+PORT=5004
+MONGO_URI=mongodb://mongo-order:27017/orderdb
+RABBITMQ_URI=amqp://localhost
+QUEUE_NAME=alerts
+WS_PORT=8082
+
+
+📊 Analytics Service (if included)
+env
+Copy code
+PORT=5005
+MONGO_URI=mongodb://mongo-analytics:27017/analyticsdb
+RABBITMQ_URL=amqp://rabbitmq:5672
+REDIS_URL=redis://redis:6379
+WEBSOCKET_PORT=8080
+
+
+🐇 RabbitMQ Exchanges & Queues
+Exchange	Publisher	Subscriber(s)	Event
+order_exchange	Order Service	Product, Alert, Analytics	order_created, order_updated
+product_exchange	Product Service	Order, Analytics	product_updated, stock_low
+alert_exchange	Alert Service	-	alert_sent
+
+🔄 Communication Flow
+Customer places an order via API Gateway
+
+Order Service creates the order and publishes an event to RabbitMQ
+
+Product Service updates inventory
+
+Analytics Service receives the event and updates metrics
+
+Alert Service sends notifications if needed
+
+API Gateway handles request validation, proxying, and errors
+
+🧠 Redis Usage
+Caching product data
+
+Caching analytics and dashboard results
+
+Temporary rate limit counters for API Gateway
+
+
+🧰 Useful Commands
+Task	Command
+Build all containers	docker-compose build
+Start all containers	docker-compose up
+Stop all containers	docker-compose down
+Check running containers	docker ps
+Logs for a service	docker logs <service-name>
+
+✅ API Gateway Responsibilities
+Common error handling
+
+Joi data validation
+
+Rate limiting
+
+Proxying requests to services
+
+Response formatting
+
+Health check route (/health)
+
+🔍 Example Health Check Route
+bash
+Copy code
+GET /api/health
+Response:
+
+json
+Copy code
+{
+  "status": "ok",
+  "services": {
+    "order-service": "running",
+    "product-service": "running",
+    "customer-service": "running",
+    "alert-service": "running"
+  }
+}
+🧩 Folder Structure Example
+css
+Copy code
+backend/
+├── api-gateway/
+│   ├── src/
+│   ├── .env
+├── product-service/
+│   ├── src/
+│   ├── .env
+├── order-service/
+│   ├── src/
+│   ├── .env
+├── customer-service/
+│   ├── src/
+│   ├── .env
+├── alert-service/
+│   ├── src/
+│   ├── .env
+├── docker-compose.yml
+└── README.md
+✨ Author
+Muhammed Aadil Nv
+📧 adilev2000@gmail.com
+💻 Passionate about scalable microservice systems and clean architecture.
+

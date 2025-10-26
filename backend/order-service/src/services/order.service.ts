@@ -204,7 +204,6 @@ export const getOrdersWithQuery = async (options: IQueryOptions) => {
   try {
     // Fetch all customers
     const customers = await getCustomers();
-    console.log("customers i s==>",customers);
     
     const customerMap = new Map(customers.map((c:Customer) => [c._id, c.customerName]));
 
@@ -241,7 +240,6 @@ export const getOrdersWithQuery = async (options: IQueryOptions) => {
     const endTime = performance.now();
     console.log(`getOrdersWithQuery (DB) took ${(endTime - startTime).toFixed(2)} ms`);
 
-    console.log("orders data is ",result);
     
     return result;
   } catch (err) {

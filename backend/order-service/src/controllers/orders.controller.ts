@@ -1,9 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import * as OrderService from "../services/order.service";
-import {
-  publishEvent,
-  OrderEventData,
-} from "../queues/order.queue";
+import { broadcastEvent } from "../index"; // Import from index.ts
 import {
   getSalesOverviewService,
   getMonthlySalesService,
@@ -27,7 +24,20 @@ interface Product {
   price: number;
   inventoryCount: number;
   isDeleted: boolean;
-  // Add other product fields as needed
+}
+
+export interface OrderEventData {
+  _id: string;
+  orderId: string;
+  customerId: string;
+  total: number;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    price: number;
+  }>;
+  status: string;
+  createdAt: string;
 }
 
 export const createOrderController = async (
@@ -51,7 +61,6 @@ export const createOrderController = async (
       return res.status(400).json({ error: "One or more products are invalid" });
     }
 
-    // Validate product quantities and collect errors
     const quantityErrors: string[] = [];
     for (const item of items) {
       const product = products.find((p) => p._id === item.productId);
@@ -68,17 +77,13 @@ export const createOrderController = async (
       }
     }
 
-    // If there are quantity errors, return a combined error message
     if (quantityErrors.length > 0) {
       return res.status(400).json({
         error: `Insufficient inventory for: ${quantityErrors.join(", ")}`,
       });
     }
 
-    // Generate random orderId
     const orderId = generateOrderId();
-
-    // Pass orderId to service
     const order = await OrderService.createOrder({ customerId, items, total, orderId });
 
     const orderEventData: OrderEventData = {
@@ -95,17 +100,20 @@ export const createOrderController = async (
       createdAt: order.createdAt.toISOString(),
     };
 
-    // Publish order creation event
-    await publishEvent("order_created", orderEventData);
+    // Broadcast order creation event
+    await broadcastEvent("order_created", orderEventData);
 
-    // Trigger sales metrics updates
-    await Promise.all([
+    // Trigger and broadcast sales metrics updates
+     await Promise.all([
       getSalesOverviewService(),
       getMonthlySalesService(),
       getTopProductsService(),
       getLowProductsService(),
       getOverallMetricsService(),
     ]);
+
+    // Since sales.service.ts already broadcasts these, we don't need to broadcast again here
+    // Just ensure the services handle the broadcasting
 
     res.status(201).json(order);
   } catch (err: unknown) {
@@ -136,7 +144,6 @@ export const updateOrderStatusController = async (
     const { status } = req.body;
     const order = await OrderService.updateOrderStatus(orderId, status);
 
-    // Check if order exists
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
     }
@@ -155,17 +162,19 @@ export const updateOrderStatusController = async (
       createdAt: order.createdAt.toISOString(),
     };
 
-    // Publish order status update event
-    await publishEvent("order_status_updated", orderEventData);
+    // Broadcast order status update event
+    await broadcastEvent("order_status_updated", orderEventData);
 
-    // Trigger sales metrics updates (if status change affects metrics)
-    await Promise.all([
+    // Trigger and broadcast sales metrics updates
+     await Promise.all([
       getSalesOverviewService(),
       getMonthlySalesService(),
       getTopProductsService(),
       getLowProductsService(),
       getOverallMetricsService(),
     ]);
+
+    // Since sales.service.ts already broadcasts these, we don't need to broadcast again here
 
     res.json(order);
   } catch (err) {
@@ -188,7 +197,6 @@ export const getOrdersWithQueryController = async (
       status,
     } = req.query;
 
-    // Validate sortBy
     const validSortBy: OrderService.SortableOrderFields[] = [
       "orderId",
       "customerId",
@@ -200,11 +208,9 @@ export const getOrdersWithQueryController = async (
       ? (sortBy as OrderService.SortableOrderFields)
       : "createdAt";
 
-    // Validate sortOrder
     const sortOrderValue: OrderService.IQueryOptions["sortOrder"] =
       sortOrder === "asc" || sortOrder === "desc" ? sortOrder : "desc";
 
-    // Validate status
     const validStatuses: OrderService.IQueryOptions["status"][] = [
       "pending",
       "shipped",

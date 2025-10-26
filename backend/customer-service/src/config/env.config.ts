@@ -6,4 +6,5 @@ export const config = {
   MONGO_URI: process.env.MONGO_URI,
   RABBITMQ_URI: process.env.RABBITMQ_URI,
   CUSTOMER_QUEUE_NAME:process.env.ANALYTICS_QUEUE_NAME,
+  REDIS_URL:process.env.REDIS_URL
 };

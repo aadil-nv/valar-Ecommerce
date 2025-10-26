@@ -108,7 +108,7 @@ export default function DashboardHome() {
       };
 
       ws.onmessage = (event: MessageEvent) => {
-        console.log("event from websocket is ",event);
+        console.log("Dashbprd event ===> ",event);
         
         try {
           const message: WebSocketMessage = JSON.parse(event.data);

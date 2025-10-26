@@ -1,13 +1,11 @@
-import { createClient } from "redis"; // Ensure redis is installed: npm install redis
+import { createClient } from "redis"; 
 
-// Redis client setup
 const redisClient = createClient({
-  url: process.env.REDIS_URL || "redis://localhost:6379", // Use environment variable or default
+  url: process.env.REDIS_URL as string, 
 });
 
 redisClient.on("error", (err) => console.error("Redis Client Error", err));
 
-// Connect to Redis
 (async () => {
   try {
     await redisClient.connect();
@@ -17,8 +15,6 @@ redisClient.on("error", (err) => console.error("Redis Client Error", err));
   }
 })();
 
-// Cache expiration time in seconds (e.g., 1 hour)
 export const CACHE_TTL = 3600;
 
-// Export the Redis client
 export { redisClient };

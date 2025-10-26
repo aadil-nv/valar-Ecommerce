@@ -1,8 +1,7 @@
-// sales.service.ts
 import { Types } from "mongoose";
 import { Order } from "../models/order.model";
 import { getProductCounts, getProductDetails } from "./productClient.service";
-import { publishEvent } from "../queues/order.queue";
+import { broadcastEvent } from "../index"; // Import from index.ts
 
 export interface IProduct extends Document {
   _id: string;
@@ -51,8 +50,8 @@ export const getSalesOverviewService = async () => {
     last30Days: results[2][0] || { totalSales: 0, count: 0 },
   };
 
-  // Publish to RabbitMQ
-  await publishEvent("salesOverviewUpdate", data);
+  // Broadcast directly via WebSocket
+  await broadcastEvent("salesOverviewUpdate", data);
 
   return data;
 };
@@ -69,8 +68,8 @@ export const getMonthlySalesService = async () => {
     { $sort: { "_id.year": -1, "_id.month": -1 } },
   ]);
 
-  // Publish to RabbitMQ
-  await publishEvent("monthlySalesUpdate", data);
+  // Broadcast directly via WebSocket
+  await broadcastEvent("monthlySalesUpdate", data);
 
   return data;
 };
@@ -87,8 +86,8 @@ export const getYearlySalesService = async () => {
     { $sort: { "_id.year": -1 } },
   ]);
 
-  // Publish to RabbitMQ
-  await publishEvent("yearlySalesUpdate", data);
+  // Broadcast directly via WebSocket
+  await broadcastEvent("yearlySalesUpdate", data);
 
   return data;
 };
@@ -115,8 +114,8 @@ export const getTopProductsService = async () => {
     product: productDetails.find((d: IProduct) => d._id.toString() === p._id.toString()),
   }));
 
-  // Publish to RabbitMQ
-  await publishEvent("topProductsUpdate", data);
+  // Broadcast directly via WebSocket
+  await broadcastEvent("topProductsUpdate", data);
 
   return data;
 };
@@ -140,8 +139,8 @@ export const getLowProductsService = async () => {
 
   const data = { lowSelling: productSales.slice(-10), unsoldProducts: unsold };
 
-  // Publish to RabbitMQ
-//   await publishEvent("lowProductsUpdate", data);
+  // Broadcast directly via WebSocket
+  await broadcastEvent("lowProductsUpdate", data);
 
   return data;
 };
@@ -177,8 +176,8 @@ export const getOverallMetricsService = async () => {
     unlistedProducts: productCounts.unlistedProducts || 0,
   };
 
-  // Publish to RabbitMQ
-  await publishEvent("overallMetricsUpdate", data);
+  // Broadcast directly via WebSocket
+  await broadcastEvent("overallMetricsUpdate", data);
 
   return data;
 };
