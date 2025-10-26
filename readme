@@ -8,6 +8,7 @@ Real-time updates are handled with **WebSockets**, and caching is managed using 
 
 ## ⚙️ Tech Stack
 
+- **React Router DOM (frontend)**
 - **Node.js** + **Express** + **TypeScript**
 - **MongoDB** (per service database)
 - **RabbitMQ** (asynchronous communication)
@@ -50,8 +51,10 @@ ALERTS_SERVICE_URL=http://localhost:5004
 env
 Copy code
 PORT=5003
-MONGO_URI=mongodb://mongo-customer:27017/customerdb
-RABBITMQ_URL=amqp://rabbitmq:5672
+RABBITMQ_URI=amqp://localhost
+MONGO_URI=mongodb+srv://adilev2000_db_user:Adil%40953947@valar-ecommerce.dw22xbm.mongodb.net/customer-service?retryWrites=true&w=majority&appName=valar-ecommerce
+CUSTOMER_QUEUE_NAME=analytics
+REDIS_URL=redis://localhost:6379
 
 
 📦 Product Service (/product-service/.env)
@@ -99,6 +102,12 @@ RABBITMQ_URL=amqp://rabbitmq:5672
 REDIS_URL=redis://redis:6379
 WEBSOCKET_PORT=8080
 
+
+🌐 Frontend (/frontend/.env)
+
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_WS_URL=ws://localhost:8081
+VITE_ALERT_WS_URL=ws://localhost:8082
 
 🐇 RabbitMQ Exchanges & Queues
 Exchange	Publisher	Subscriber(s)	Event
@@ -172,21 +181,96 @@ backend/
 ├── api-gateway/
 │   ├── src/
 │   ├── .env
+│   ├── package.json
+│   └── tsconfig.json
 ├── product-service/
 │   ├── src/
 │   ├── .env
+│   ├── package.json
+│   └── tsconfig.json
 ├── order-service/
 │   ├── src/
 │   ├── .env
+│   ├── package.json
+│   └── tsconfig.json
 ├── customer-service/
 │   ├── src/
 │   ├── .env
+│   ├── package.json
+│   └── tsconfig.json
 ├── alert-service/
 │   ├── src/
 │   ├── .env
+│   ├── package.json
+│   └── tsconfig.json
+├── analytics-service/ (optional)
+│   ├── src/
+│   ├── .env
+│   ├── package.json
+│   └── tsconfig.json
+├── frontend/
+│   ├── src/
+│   ├── .env
+│   └── package.json
 ├── docker-compose.yml
 └── README.md
+
+
+Service-Specific Installation
+API Gateway
+bashcd api-gateway
+npm install
+npm start
+
+Port: 5000
+Purpose: Handles request validation, rate limiting, and proxies requests to other services.
+
+Customer Service
+bashcd customer-service
+npm install
+npm start
+
+Port: 5003
+Purpose: Manages customer data and authentication.
+
+Product Service
+bashcd product-service
+npm install
+npm start
+
+Port: 5002
+Purpose: Manages product catalog and inventory.
+
+Order Service
+bashcd order-service
+npm install
+npm start
+
+Port: 5001 (HTTP)
+Purpose: Handles order creation, updates, and WebSocket broadcasting.
+
+Alert Service
+bashcd alert-service
+npm install
+npm start
+
+Port: 5004 (HTTP)
+Purpose: Sends notifications for order and inventory events.
+
+Analytics Service (Optional)
+bashcd analytics-service
+npm install
+npm start
+
+Port: 5005 (HTTP)
+Purpose: Collects and processes analytics data for the dashboard.
+
+Frontend
+bashcd frontend
+npm install
+npm run dev
 ✨ Author
+
 Muhammed Aadil Nv
 📧 adilev2000@gmail.com
 💻 Passionate about scalable microservice systems and clean architecture.
